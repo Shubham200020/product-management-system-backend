@@ -72,14 +72,33 @@ public class AuthService {
 
     public String login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return jwtUtils.generateTokenFromEmail(request.getEmail());
+        // Find the user by identifier to get their actual email for the JWT subject
+        User user = getUserByIdentifier(request.getIdentifier());
+        return jwtUtils.generateTokenFromEmail(user.getEmail());
+    }
+
+    public User getUserByIdentifier(String identifier) {
+        return userRepository.findByEmailOrPhone(identifier, identifier)
+                .orElseThrow(() -> new RuntimeException("User not found with email or phone: " + identifier));
     }
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public void resetPassword(com.example.products.dto.ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("No account found with this email."));
+
+        if (!user.getPhone().equals(request.getPhone())) {
+            throw new RuntimeException("Incorrect phone number associated with this email.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

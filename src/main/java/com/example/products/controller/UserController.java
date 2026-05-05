@@ -38,10 +38,25 @@ public class UserController {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
+        // Check if new email is already taken
+        if (!user.getEmail().equals(userDetails.getEmail()) && userRepository.existsByEmail(userDetails.getEmail())) {
+            throw new RuntimeException("Email already in use");
+        }
+
+        // Check if new phone is already taken
+        if (!user.getPhone().equals(userDetails.getPhone()) && userRepository.existsByPhone(userDetails.getPhone())) {
+            throw new RuntimeException("Phone number already in use");
+        }
+
         user.setName(userDetails.getName());
         user.setPhone(userDetails.getPhone());
         user.setEmail(userDetails.getEmail());
         user.setProfilePicture(userDetails.getProfilePicture());
+
+        // Update password if provided
+        if (userDetails.getPassword() != null && !userDetails.getPassword().trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
+        }
         
         return ResponseEntity.ok(userRepository.save(user));
     }

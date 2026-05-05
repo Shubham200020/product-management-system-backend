@@ -87,6 +87,39 @@ public class Product {
         this.availableStock = availableStock;
     }
 
+    public Integer getTotalInitialStock() {
+        try {
+            if (inventoryBatches == null || !org.hibernate.Hibernate.isInitialized(inventoryBatches)) {
+                return 0;
+            }
+            return inventoryBatches.stream()
+                    .mapToInt(InventoryBatch::getQuantity)
+                    .sum();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public Double getStockPercentage() {
+        Integer initial = getTotalInitialStock();
+        if (initial == null || initial == 0) return 0.0;
+        return (getAvailableStock() * 100.0) / initial;
+    }
+
+    public String getStockStatus() {
+        Integer available = getAvailableStock();
+        if (available == null || available <= 0) {
+            return "OUT_OF_STOCK";
+        }
+        
+        Double percentage = getStockPercentage();
+        if (percentage < 30.0) {
+            return "LOW_STOCK";
+        }
+        
+        return "IN_STOCK";
+    }
+
     @PrePersist
     public void generateSku() {
         if (this.sku == null || this.sku.isEmpty()) {

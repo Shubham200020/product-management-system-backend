@@ -40,7 +40,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         String jwt = authService.login(request);
-        User user = authService.getUserByEmail(request.getEmail());
+        User user = authService.getUserByIdentifier(request.getIdentifier());
         
         // Security Cookie (HttpOnly)
         Cookie cookie = new Cookie(jwtCookie, jwt);
@@ -79,5 +79,11 @@ public class AuthController {
         response.addCookie(userCookie);
         
         return ResponseEntity.ok("Logout successful");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody com.example.products.dto.ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(Map.of("message", "Password reset successful. You can now login with your new password."));
     }
 }
