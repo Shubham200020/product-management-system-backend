@@ -41,6 +41,12 @@ public class SalesItem {
     @EqualsAndHashCode.Exclude
     private Product product;
 
+    @ManyToOne
+    @JoinColumn(name = "batch_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private InventoryBatch inventoryBatch;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Integer getQuantity() { return quantity; }
@@ -55,4 +61,6 @@ public class SalesItem {
     public void setInvoice(SalesInvoice invoice) { this.invoice = invoice; }
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
+    public InventoryBatch getInventoryBatch() { return inventoryBatch; }
+    public void setInventoryBatch(InventoryBatch inventoryBatch) { this.inventoryBatch = inventoryBatch; }
 }

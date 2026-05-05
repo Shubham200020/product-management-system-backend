@@ -70,6 +70,7 @@ public class SalesService {
                 SalesItem salesItem = new SalesItem();
                 salesItem.setInvoice(invoice);
                 salesItem.setProduct(product);
+                salesItem.setInventoryBatch(batch);
                 salesItem.setQuantity(sellFromThisBatch);
                 salesItem.setSellingPrice(sellingPrice);
                 salesItem.setCostPrice(costPrice);

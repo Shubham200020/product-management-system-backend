@@ -59,7 +59,7 @@ public class User {
     private List<Shop> shops = new java.util.ArrayList<>();
 
     // Explicit Getters and Setters to resolve IDE issues with Lombok
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String profilePicture;
 
     public Long getId() { return id; }

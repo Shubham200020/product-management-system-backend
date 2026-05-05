@@ -48,4 +48,18 @@ public class InventoryBatch {
     public void setProduct(Product product) { this.product = product; }
     public Purchase getPurchase() { return purchase; }
     public void setPurchase(Purchase purchase) { this.purchase = purchase; }
+
+    @OneToMany(mappedBy = "inventoryBatch", cascade = CascadeType.ALL)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private java.util.List<SalesItem> salesItems = new java.util.ArrayList<>();
+
+    public java.util.List<SalesItem> getSalesItems() { return salesItems; }
+    public void setSalesItems(java.util.List<SalesItem> salesItems) { this.salesItems = salesItems; }
+
+    public Double getGrossProfit() {
+        if (salesItems == null) return 0.0;
+        return salesItems.stream()
+                .mapToDouble(si -> si.getProfit() != null ? si.getProfit() : 0.0)
+                .sum();
+    }
 }

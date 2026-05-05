@@ -13,7 +13,11 @@ public class InventoryBatchReportDTO {
     private Double costPrice;
     private Integer initialQuantity;
     private Integer remainingQuantity;
-    private Double totalProfit;
+    private Double grossProfit;
+    private Double netProfit;
+    private String stockStatus;
+    private Double investment;
+    private Double potentialLoss;
 
     // Getters and Setters
     public String getProductName() { return productName; }
@@ -34,6 +38,14 @@ public class InventoryBatchReportDTO {
     public void setInitialQuantity(Integer initialQuantity) { this.initialQuantity = initialQuantity; }
     public Integer getRemainingQuantity() { return remainingQuantity; }
     public void setRemainingQuantity(Integer remainingQuantity) { this.remainingQuantity = remainingQuantity; }
-    public Double getTotalProfit() { return totalProfit; }
-    public void setTotalProfit(Double totalProfit) { this.totalProfit = totalProfit; }
+    public Double getGrossProfit() { return grossProfit; }
+    public void setGrossProfit(Double grossProfit) { this.grossProfit = grossProfit; }
+    public Double getNetProfit() { return netProfit; }
+    public void setNetProfit(Double netProfit) { this.netProfit = netProfit; }
+    public String getStockStatus() { return stockStatus; }
+    public void setStockStatus(String stockStatus) { this.stockStatus = stockStatus; }
+    public Double getInvestment() { return investment; }
+    public void setInvestment(Double investment) { this.investment = investment; }
+    public Double getPotentialLoss() { return potentialLoss; }
+    public void setPotentialLoss(Double potentialLoss) { this.potentialLoss = potentialLoss; }
 }

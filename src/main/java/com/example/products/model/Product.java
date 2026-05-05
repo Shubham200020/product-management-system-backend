@@ -111,6 +111,20 @@ public class Product {
         if (available == null || available <= 0) {
             return "OUT_OF_STOCK";
         }
+
+        // Check for expiry
+        try {
+            if (inventoryBatches != null && org.hibernate.Hibernate.isInitialized(inventoryBatches)) {
+                java.time.LocalDate today = java.time.LocalDate.now();
+                boolean hasExpired = inventoryBatches.stream()
+                        .anyMatch(b -> b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today));
+                if (hasExpired) {
+                    return "EXPIRED";
+                }
+            }
+        } catch (Exception e) {
+            // Fallback to normal checks
+        }
         
         Double percentage = getStockPercentage();
         if (percentage < 30.0) {
@@ -153,4 +167,24 @@ public class Product {
     public void setInventoryBatches(List<InventoryBatch> inventoryBatches) { this.inventoryBatches = inventoryBatches; }
     public List<SalesItem> getSalesItems() { return salesItems; }
     public void setSalesItems(List<SalesItem> salesItems) { this.salesItems = salesItems; }
+
+    public Double getGrossProfit() {
+        if (salesItems == null) return 0.0;
+        return salesItems.stream()
+                .mapToDouble(si -> si.getProfit() != null ? si.getProfit() : 0.0)
+                .sum();
+    }
+
+    public Double getPotentialLoss() {
+        if (inventoryBatches == null) return 0.0;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        return inventoryBatches.stream()
+                .filter(b -> b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today))
+                .mapToDouble(b -> (b.getCostPrice() != null ? b.getCostPrice() : 0.0) * b.getRemainingQuantity())
+                .sum();
+    }
+
+    public Double getNetProfit() {
+        return getGrossProfit() - getPotentialLoss();
+    }
 }

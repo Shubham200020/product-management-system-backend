@@ -36,8 +36,28 @@ public class ProductController {
     }
 
     @GetMapping("/report")
-    public List<InventoryBatchReportDTO> getInventoryReport(Principal principal) {
+    public List<InventoryBatchReportDTO> getInventoryReport(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
+            @RequestParam(required = false) String status,
+            Principal principal) {
+        
         List<InventoryBatch> batches = inventoryBatchRepository.findAllByOwnerEmail(principal.getName());
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        // Filter batches by purchase date if requested
+        if (startDate != null || endDate != null) {
+            batches = batches.stream()
+                .filter(b -> {
+                    if (b.getPurchase() == null || b.getPurchase().getPurchaseDate() == null) return false;
+                    java.time.LocalDate pDate = b.getPurchase().getPurchaseDate().toLocalDate();
+                    boolean afterStart = startDate == null || !pDate.isBefore(startDate);
+                    boolean beforeEnd = endDate == null || !pDate.isAfter(endDate);
+                    return afterStart && beforeEnd;
+                })
+                .collect(Collectors.toList());
+        }
+
         List<InventoryBatchReportDTO> report = new ArrayList<>();
         
         for (InventoryBatch b : batches) {
@@ -53,15 +73,52 @@ public class ProductController {
             dto.setInitialQuantity(b.getQuantity());
             dto.setRemainingQuantity(b.getRemainingQuantity());
             
-            // Profit is product-wide in our current simplified model
-            double productProfit = 0.0;
-            if (p.getSalesItems() != null) {
-                productProfit = p.getSalesItems().stream()
+            double cost = b.getCostPrice() != null ? b.getCostPrice() : 0.0;
+            dto.setInvestment(cost * b.getQuantity());
+
+            // Profit calculation
+            double grossProfit = 0.0;
+            if (b.getSalesItems() != null) {
+                grossProfit = b.getSalesItems().stream()
+                    .filter(si -> {
+                        if (si.getInvoice() == null || si.getInvoice().getCreatedAt() == null) return true;
+                        java.time.LocalDate sDate = si.getInvoice().getCreatedAt().toLocalDate();
+                        boolean afterStart = startDate == null || !sDate.isBefore(startDate);
+                        boolean beforeEnd = endDate == null || !sDate.isAfter(endDate);
+                        return afterStart && beforeEnd;
+                    })
                     .mapToDouble(si -> si.getProfit() != null ? si.getProfit() : 0.0)
                     .sum();
             }
-            dto.setTotalProfit(productProfit);
-            report.add(dto);
+            
+            double potentialLoss = 0.0;
+            if (b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today)) {
+                potentialLoss = cost * b.getRemainingQuantity();
+            }
+
+            dto.setGrossProfit(grossProfit);
+            dto.setPotentialLoss(potentialLoss);
+            dto.setNetProfit(grossProfit - potentialLoss);
+
+            // ACCURATE BATCH STATUS CALCULATION
+            String batchStatus = "IN_STOCK";
+            if (b.getRemainingQuantity() <= 0) {
+                batchStatus = "OUT_OF_STOCK";
+            } else if (b.getExpiryDate() != null && b.getExpiryDate().isBefore(today)) {
+                batchStatus = "EXPIRED";
+            } else {
+                double percentage = (double) b.getRemainingQuantity() / b.getQuantity() * 100;
+                if (percentage < 30) {
+                    batchStatus = "LOW_STOCK";
+                }
+            }
+            
+            dto.setStockStatus(batchStatus);
+
+            // Apply status filter if provided
+            if (status == null || status.isEmpty() || status.equalsIgnoreCase(batchStatus)) {
+                report.add(dto);
+            }
         }
         return report;
     }
