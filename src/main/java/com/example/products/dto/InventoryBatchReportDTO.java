@@ -18,6 +18,10 @@ public class InventoryBatchReportDTO {
     private String stockStatus;
     private Double investment;
     private Double potentialLoss;
+    private String supplierName;
+    private Double mrp;
+    private Double recommendedDiscount;
+    private Double lossAfterDiscount;
 
     // Getters and Setters
     public String getProductName() { return productName; }
@@ -48,4 +52,12 @@ public class InventoryBatchReportDTO {
     public void setInvestment(Double investment) { this.investment = investment; }
     public Double getPotentialLoss() { return potentialLoss; }
     public void setPotentialLoss(Double potentialLoss) { this.potentialLoss = potentialLoss; }
+    public String getSupplierName() { return supplierName; }
+    public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+    public Double getMrp() { return mrp; }
+    public void setMrp(Double mrp) { this.mrp = mrp; }
+    public Double getRecommendedDiscount() { return recommendedDiscount; }
+    public void setRecommendedDiscount(Double recommendedDiscount) { this.recommendedDiscount = recommendedDiscount; }
+    public Double getLossAfterDiscount() { return lossAfterDiscount; }
+    public void setLossAfterDiscount(Double lossAfterDiscount) { this.lossAfterDiscount = lossAfterDiscount; }
 }

@@ -12,4 +12,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "LEFT JOIN FETCH p.inventoryBatches " +
             "WHERE p.shop.owner.email = :email")
     List<Product> findByShopOwnerEmail(String email);
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.shop.owner.email = :email")
+    List<Product> findByCategoryIdAndShopOwnerEmail(Long categoryId, String email);
 }

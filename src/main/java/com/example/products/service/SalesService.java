@@ -64,17 +64,30 @@ public class SalesService {
 
                 int sellFromThisBatch = Math.min(batch.getRemainingQuantity(), quantityToSell);
                 
+                // Smart Batch Pricing: If batch has a clearance discount, apply it automatically
+                double batchSellingPrice = sellingPrice;
+                double batchDiscount = 0.0;
+                
+                if (batch.getDiscountPercent() != null && batch.getDiscountPercent() > 0) {
+                    batchDiscount = batch.getDiscountPercent();
+                    // If the user hasn't already manually applied a deeper discount, use the batch's clearance price
+                    double mrpPrice = product.getMrp() != null ? product.getMrp() : sellingPrice;
+                    double clearancePrice = mrpPrice * (1 - (batchDiscount / 100.0));
+                    batchSellingPrice = Math.min(sellingPrice, clearancePrice);
+                }
+
                 double costPrice = batch.getCostPrice();
-                double profit = (sellingPrice - costPrice) * sellFromThisBatch;
+                double profit = (batchSellingPrice - costPrice) * sellFromThisBatch;
 
                 SalesItem salesItem = new SalesItem();
                 salesItem.setInvoice(invoice);
                 salesItem.setProduct(product);
                 salesItem.setInventoryBatch(batch);
                 salesItem.setQuantity(sellFromThisBatch);
-                salesItem.setSellingPrice(sellingPrice);
+                salesItem.setSellingPrice(batchSellingPrice);
                 salesItem.setCostPrice(costPrice);
                 salesItem.setProfit(profit);
+                salesItem.setDiscountPercent(batchDiscount);
 
                 invoice.getSalesItems().add(salesItem);
                 
@@ -82,7 +95,7 @@ public class SalesService {
                 batch.setRemainingQuantity(batch.getRemainingQuantity() - sellFromThisBatch);
                 batchRepository.save(batch);
 
-                totalInvoiceAmount += (sellingPrice * sellFromThisBatch);
+                totalInvoiceAmount += (batchSellingPrice * sellFromThisBatch);
                 totalInvoiceProfit += profit;
                 quantityToSell -= sellFromThisBatch;
             }

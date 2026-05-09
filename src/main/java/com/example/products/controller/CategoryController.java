@@ -39,4 +39,33 @@ public class CategoryController {
         }
         return ResponseEntity.ok(categoryRepository.save(category));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category categoryDetails, Principal principal) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        
+        // Validate ownership via shop
+        if (category.getShop() != null && !category.getShop().getOwner().getEmail().equals(principal.getName())) {
+            throw new RuntimeException("Access denied: You do not own this category");
+        }
+        
+        category.setName(categoryDetails.getName());
+        category.setShop(categoryDetails.getShop());
+        
+        return ResponseEntity.ok(categoryRepository.save(category));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id, Principal principal) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        
+        if (category.getShop() != null && !category.getShop().getOwner().getEmail().equals(principal.getName())) {
+            throw new RuntimeException("Access denied: You do not own this category");
+        }
+        
+        categoryRepository.delete(category);
+        return ResponseEntity.ok().build();
+    }
 }

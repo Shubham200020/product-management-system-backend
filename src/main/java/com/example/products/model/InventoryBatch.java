@@ -62,4 +62,8 @@ public class InventoryBatch {
                 .mapToDouble(si -> si.getProfit() != null ? si.getProfit() : 0.0)
                 .sum();
     }
+
+    private Double discountPercent = 0.0;
+    public Double getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Double discountPercent) { this.discountPercent = discountPercent; }
 }

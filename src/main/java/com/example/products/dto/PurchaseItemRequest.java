@@ -9,7 +9,6 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class PurchaseItemRequest {
     private Long productId;
     private Integer quantity;

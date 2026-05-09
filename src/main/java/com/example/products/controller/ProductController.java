@@ -92,7 +92,7 @@ public class ProductController {
             }
             
             double potentialLoss = 0.0;
-            if (b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today)) {
+            if (b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && !b.getExpiryDate().isAfter(today)) {
                 potentialLoss = cost * b.getRemainingQuantity();
             }
 
@@ -102,10 +102,14 @@ public class ProductController {
 
             // ACCURATE BATCH STATUS CALCULATION
             String batchStatus = "IN_STOCK";
-            if (b.getRemainingQuantity() <= 0) {
+            int remQty = b.getRemainingQuantity() != null ? b.getRemainingQuantity() : 0;
+            
+            if (remQty <= 0) {
                 batchStatus = "OUT_OF_STOCK";
-            } else if (b.getExpiryDate() != null && b.getExpiryDate().isBefore(today)) {
+            } else if (b.getExpiryDate() != null && !b.getExpiryDate().isAfter(today)) {
                 batchStatus = "EXPIRED";
+            } else if (b.getExpiryDate() != null && !b.getExpiryDate().isAfter(today.plusDays(30))) {
+                batchStatus = "NEAR_EXPIRY";
             } else {
                 double percentage = (double) b.getRemainingQuantity() / b.getQuantity() * 100;
                 if (percentage < 30) {
@@ -114,9 +118,29 @@ public class ProductController {
             }
             
             dto.setStockStatus(batchStatus);
+            dto.setSupplierName(b.getPurchase() != null ? b.getPurchase().getSupplier() : "N/A");
+            dto.setMrp(p.getMrp());
+
+            // --- Recommended Discount Calculation ---
+            double discount = 10.0; // Base
+            if (batchStatus.equals("EXPIRED")) discount += 40.0;
+            else if (batchStatus.equals("NEAR_EXPIRY")) discount += 20.0;
+            
+            if (b.getRemainingQuantity() > 100) discount += 10.0; // Overstock
+            
+            dto.setRecommendedDiscount(discount);
+
+            // Loss after discount = (Cost - (MRP * (1 - Discount%))) * RemainingQty
+            double mrpVal = p.getMrp() != null ? p.getMrp() : 0.0;
+            double discountedPrice = mrpVal * (1 - (discount / 100.0));
+            double costPerUnit = b.getCostPrice() != null ? b.getCostPrice() : 0.0;
+            int remainingQty = b.getRemainingQuantity() != null ? b.getRemainingQuantity() : 0;
+            
+            dto.setLossAfterDiscount((costPerUnit - discountedPrice) * remainingQty);
 
             // Apply status filter if provided
-            if (status == null || status.isEmpty() || status.equalsIgnoreCase(batchStatus)) {
+            if (status == null || status.isEmpty() || status.equalsIgnoreCase(batchStatus) || 
+               (status.equalsIgnoreCase("EXPIRED") && batchStatus.equalsIgnoreCase("NEAR_EXPIRY"))) {
                 report.add(dto);
             }
         }
@@ -170,5 +194,51 @@ public class ProductController {
         
         productRepository.delete(product);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/apply-discount")
+    public Product applyDiscount(@PathVariable Long id, @RequestParam Double discountPercent) {
+        Product p = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        Double currentMrp = p.getMrp();
+        if (currentMrp != null && discountPercent > 0) {
+            Double newMrp = currentMrp * (1 - (discountPercent / 100.0));
+            // Round to 2 decimal places
+            newMrp = Math.round(newMrp * 100.0) / 100.0;
+            p.setMrp(newMrp);
+            return productRepository.save(p);
+        }
+        return p;
+    }
+
+    @PostMapping("/batch/{batchId}/apply-discount")
+    public InventoryBatch applyBatchDiscount(@PathVariable Long batchId, @RequestParam Double discountPercent) {
+        InventoryBatch b = inventoryBatchRepository.findById(batchId)
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
+        
+        b.setDiscountPercent(discountPercent);
+        return inventoryBatchRepository.save(b);
+    }
+
+    @PostMapping("/{id}/clear-expired")
+    public void clearExpiredStock(@PathVariable Long id) {
+        Product p = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        java.time.LocalDate today = java.time.LocalDate.now();
+        List<InventoryBatch> expiredBatches = p.getInventoryBatches().stream()
+                .filter(b -> b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && !b.getExpiryDate().isAfter(today))
+                .collect(java.util.stream.Collectors.toList());
+        
+        for (InventoryBatch b : expiredBatches) {
+            b.setRemainingQuantity(0); // Mark as discarded
+            inventoryBatchRepository.save(b);
+        }
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public List<Product> getProductsByCategory(@PathVariable Long categoryId, Principal principal) {
+        return productRepository.findByCategoryIdAndShopOwnerEmail(categoryId, principal.getName());
     }
 }

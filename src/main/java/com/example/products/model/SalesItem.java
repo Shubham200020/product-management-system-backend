@@ -27,6 +27,7 @@ public class SalesItem {
     private Double sellingPrice;
     private Double costPrice;
     private Double profit;
+    private Double discountPercent = 0.0;
 
     @ManyToOne
     @JoinColumn(name = "invoice_id")
@@ -63,4 +64,6 @@ public class SalesItem {
     public void setProduct(Product product) { this.product = product; }
     public InventoryBatch getInventoryBatch() { return inventoryBatch; }
     public void setInventoryBatch(InventoryBatch inventoryBatch) { this.inventoryBatch = inventoryBatch; }
+    public Double getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Double discountPercent) { this.discountPercent = discountPercent; }
 }

@@ -6,7 +6,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.UUID;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Comparator;
+import java.util.Optional;
 
 @Entity
 @Table(name = "products")
@@ -70,6 +73,22 @@ public class Product {
     @Transient
     private Integer availableStock;
 
+    @Transient
+    private Double recommendedDiscount;
+
+    public Double getRecommendedDiscount() {
+        if (recommendedDiscount != null) return recommendedDiscount;
+        // Basic logic fallback: if expired or near expiry, suggest high discount
+        String status = getStockStatus();
+        if ("EXPIRED".equals(status)) return 50.0;
+        if ("NEAR_EXPIRY".equals(status)) return 20.0;
+        return 0.0;
+    }
+
+    public void setRecommendedDiscount(Double recommendedDiscount) {
+        this.recommendedDiscount = recommendedDiscount;
+    }
+
     public Integer getAvailableStock() {
         try {
             if (inventoryBatches == null || !org.hibernate.Hibernate.isInitialized(inventoryBatches)) {
@@ -106,32 +125,62 @@ public class Product {
         return (getAvailableStock() * 100.0) / initial;
     }
 
-    public String getStockStatus() {
-        Integer available = getAvailableStock();
-        if (available == null || available <= 0) {
-            return "OUT_OF_STOCK";
-        }
-
-        // Check for expiry
+    public Integer getExpiredStock() {
         try {
-            if (inventoryBatches != null && org.hibernate.Hibernate.isInitialized(inventoryBatches)) {
-                java.time.LocalDate today = java.time.LocalDate.now();
-                boolean hasExpired = inventoryBatches.stream()
-                        .anyMatch(b -> b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today));
-                if (hasExpired) {
-                    return "EXPIRED";
-                }
-            }
-        } catch (Exception e) {
-            // Fallback to normal checks
+            if (inventoryBatches == null || !org.hibernate.Hibernate.isInitialized(inventoryBatches)) return 0;
+            java.time.LocalDate today = java.time.LocalDate.now();
+            return inventoryBatches.stream()
+                    .filter(b -> b.getRemainingQuantity() > 0 && b.getExpiryDate() != null && !b.getExpiryDate().isAfter(today))
+                    .mapToInt(InventoryBatch::getRemainingQuantity)
+                    .sum();
+        } catch (Exception e) { return 0; }
+    }
+
+    public Integer getNearExpiryStock() {
+        try {
+            if (inventoryBatches == null || !org.hibernate.Hibernate.isInitialized(inventoryBatches)) return 0;
+            java.time.LocalDate today = java.time.LocalDate.now();
+            return inventoryBatches.stream()
+                    .filter(b -> b.getRemainingQuantity() > 0 && 
+                                b.getExpiryDate() != null && 
+                                b.getExpiryDate().isAfter(today) &&
+                                b.getDiscountPercent() != null && b.getDiscountPercent() > 0)
+                    .mapToInt(InventoryBatch::getRemainingQuantity)
+                    .sum();
+        } catch (Exception e) { return 0; }
+    }
+
+    public Integer getFreshStock() {
+        Integer total = getAvailableStock();
+        if (total == null) return 0;
+        return total - getExpiredStock() - getNearExpiryStock();
+    }
+
+    public Double getNextBatchDiscount() {
+        try {
+            if (inventoryBatches == null || !org.hibernate.Hibernate.isInitialized(inventoryBatches)) return 0.0;
+            return inventoryBatches.stream()
+                    .filter(b -> b.getRemainingQuantity() > 0)
+                    .sorted(Comparator.comparing(b -> b.getPurchase() != null ? b.getPurchase().getPurchaseDate() : LocalDateTime.MIN))
+                    .map(InventoryBatch::getDiscountPercent)
+                    .findFirst()
+                    .orElse(0.0);
+        } catch (Exception e) { return 0.0; }
+    }
+
+    public String getStockStatus() {
+        Integer totalAvailable = getAvailableStock();
+        if (totalAvailable == null || totalAvailable <= 0) return "OUT_OF_STOCK";
+
+        Integer expired = getExpiredStock();
+        Integer freshStock = totalAvailable - expired;
+
+        if (expired > 0) {
+            return freshStock > 0 ? "PARTIALLY_EXPIRED" : "EXPIRED";
         }
         
         Double percentage = getStockPercentage();
-        if (percentage < 30.0) {
-            return "LOW_STOCK";
-        }
-        
-        return "IN_STOCK";
+        return percentage < 30.0 ? "LOW_STOCK" : "IN_STOCK";
     }
 
     @PrePersist

@@ -54,6 +54,12 @@ public class PurchaseService {
             
             batches.add(batch);
             totalCost += (itemReq.getCostPrice() * itemReq.getQuantity());
+
+            // Update product MRP if provided
+            if (itemReq.getMrp() != null && itemReq.getMrp() > 0) {
+                product.setMrp(itemReq.getMrp());
+                productRepository.save(product);
+            }
         }
 
         purchase.setTotalCost(totalCost);
@@ -84,6 +90,7 @@ public class PurchaseService {
         private Long productId;
         private Integer quantity;
         private Double costPrice;
+        private Double mrp;
         private LocalDate expiryDate;
 
         public Long getProductId() { return productId; }
@@ -92,6 +99,8 @@ public class PurchaseService {
         public void setQuantity(Integer quantity) { this.quantity = quantity; }
         public Double getCostPrice() { return costPrice; }
         public void setCostPrice(Double costPrice) { this.costPrice = costPrice; }
+        public Double getMrp() { return mrp; }
+        public void setMrp(Double mrp) { this.mrp = mrp; }
         public LocalDate getExpiryDate() { return expiryDate; }
         public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
     }
