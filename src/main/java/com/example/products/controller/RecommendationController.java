@@ -19,7 +19,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/recommendations")
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class RecommendationController {
 
     @Autowired

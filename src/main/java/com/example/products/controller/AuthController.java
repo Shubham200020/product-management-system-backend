@@ -4,19 +4,19 @@ import com.example.products.dto.LoginRequest;
 import com.example.products.dto.RegisterRequest;
 import com.example.products.model.User;
 import com.example.products.service.AuthService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class AuthController {
 
     @Autowired
@@ -24,6 +24,12 @@ public class AuthController {
 
     @Value("${app.jwt.cookie-name}")
     private String jwtCookie;
+
+    @Value("${app.jwt.cookie-secure}")
+    private boolean cookieSecure;
+
+    @Value("${app.jwt.cookie-same-site}")
+    private String cookieSameSite;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
@@ -43,20 +49,25 @@ public class AuthController {
         User user = authService.getUserByIdentifier(request.getIdentifier());
         
         // Security Cookie (HttpOnly)
-        Cookie cookie = new Cookie(jwtCookie, jwt);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(24 * 60 * 60);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(jwtCookie, jwt)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         // User Info Cookie (Visible to Angular) - URL Encoded to handle spaces
         String userInfo = java.net.URLEncoder.encode(user.getName() + ":" + user.getRole(), java.nio.charset.StandardCharsets.UTF_8);
-        Cookie userCookie = new Cookie("user-info", userInfo);
-        userCookie.setHttpOnly(false);
-        userCookie.setPath("/");
-        userCookie.setMaxAge(24 * 60 * 60);
-        response.addCookie(userCookie);
+        ResponseCookie userCookie = ResponseCookie.from("user-info", userInfo)
+                .httpOnly(false)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, userCookie.toString());
         
         return ResponseEntity.ok(Map.of(
             "message", "Login successful",
@@ -67,19 +78,27 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie(jwtCookie, null);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(jwtCookie, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        Cookie userCookie = new Cookie("user-info", null);
-        userCookie.setPath("/");
-        userCookie.setMaxAge(0);
-        response.addCookie(userCookie);
+        ResponseCookie userCookie = ResponseCookie.from("user-info", "")
+                .httpOnly(false)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, userCookie.toString());
         
         return ResponseEntity.ok("Logout successful");
     }
+
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody com.example.products.dto.ResetPasswordRequest request) {

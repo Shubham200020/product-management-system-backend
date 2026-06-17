@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/system")
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class SystemStatusController {
 
     @Autowired
