@@ -31,6 +31,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Value("${app.jwt.cookie-name}")
     private String jwtCookieName;
 
+    @Value("${app.jwt.cookie-secure}")
+    private boolean cookieSecure;
+
+    @Value("${app.jwt.cookie-same-site}")
+    private String cookieSameSite;
+
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
@@ -59,15 +65,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void clearCookies(HttpServletResponse response) {
-        Cookie cookie = new Cookie(jwtCookieName, null);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from(jwtCookieName, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
 
-        Cookie userCookie = new Cookie("user-info", null);
-        userCookie.setPath("/");
-        userCookie.setMaxAge(0);
-        response.addCookie(userCookie);
+        org.springframework.http.ResponseCookie userCookie = org.springframework.http.ResponseCookie.from("user-info", "")
+                .httpOnly(false)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, userCookie.toString());
     }
 }
