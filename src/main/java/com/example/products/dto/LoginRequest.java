@@ -11,7 +11,11 @@ public class LoginRequest {
     }
 
     public void setIdentifier(String identifier) {
-        this.identifier = identifier;
+        if (identifier != null) {
+            this.identifier = identifier.contains("@") ? identifier.trim().toLowerCase() : identifier.trim();
+        } else {
+            this.identifier = null;
+        }
     }
 
     public String getPassword() {

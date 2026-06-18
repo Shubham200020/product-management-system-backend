@@ -19,7 +19,7 @@ public class ResetPasswordRequest {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email != null ? email.trim().toLowerCase() : null;
     }
 
     public String getPhone() {
